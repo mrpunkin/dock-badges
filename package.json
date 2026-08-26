@@ -24,11 +24,15 @@
         {
           "name": "symbol",
           "title": "Icon",
-          "description": "Symbol shown in the menu bar. A badge is added whenever a Dock app has notifications.",
+          "description": "Symbol shown in the menu bar. It turns red whenever a Dock app has notifications; Bell and App also gain a badge.",
           "type": "dropdown",
           "required": false,
-          "default": "bell",
+          "default": "circle",
           "data": [
+            {
+              "title": "Circle",
+              "value": "circle"
+            },
             {
               "title": "Bell",
               "value": "bell"
@@ -42,7 +46,7 @@
         {
           "name": "symbolStyle",
           "title": "Icon Style",
-          "description": "Outline or filled rendering of the menu bar symbol.",
+          "description": "Filled or outline rendering of the menu bar symbol.",
           "type": "dropdown",
           "required": false,
           "default": "filled",
@@ -59,20 +63,21 @@
         },
         {
           "name": "showCount",
-          "title": "Menu Bar",
-          "label": "Show total count next to the icon",
-          "description": "When disabled only the badge on the icon indicates that notifications are present.",
+          "title": "Count",
+          "label": "Show Total Count",
+          "description": "Show the summed badge count next to the menu bar icon. When disabled, only the badge on the icon indicates notifications.",
           "type": "checkbox",
           "required": false,
           "default": true
         },
         {
           "name": "hideWhenClear",
-          "label": "Hide menu bar item when there are no badges",
-          "description": "Removes the item from the menu bar entirely while no Dock app has a badge.",
+          "label": "Hide When Clear",
+          "description": "Remove the menu bar item entirely while no Dock app has a badge.",
           "type": "checkbox",
           "required": false,
-          "default": false
+          "default": false,
+          "title": "Visibility"
         }
       ]
     }

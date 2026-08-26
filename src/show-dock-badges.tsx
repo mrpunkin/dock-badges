@@ -2,6 +2,7 @@ import {
   Application,
   Color,
   Icon,
+  Image,
   Keyboard,
   MenuBarExtra,
   getApplications,
@@ -13,7 +14,7 @@ import { useCachedPromise } from "@raycast/utils";
 import { AccessibilityError, DockTile, readDockTiles, readSystemDarkMode } from "./dock";
 
 interface Preferences {
-  symbol: "bell" | "app";
+  symbol: "circle" | "bell" | "app";
   symbolStyle: "outline" | "filled";
   showCount: boolean;
   hideWhenClear: boolean;
@@ -26,16 +27,28 @@ interface DockApp {
 
 // Built-in icons in the dropdown are tinted against Raycast's app theme rather than the menu's
 // appearance, so tint them explicitly for the system Light/Dark appearance the menu actually uses.
-const menuIcon = (source: Icon, darkMode: boolean) => ({ source, tintColor: darkMode ? "#FFFFFF" : "#1D1D1F" });
+// Values match AppKit's labelColor (85% black / 85% white), which is what native menus draw with.
+const menuIcon = (source: Icon, darkMode: boolean) => ({
+  source,
+  tintColor: darkMode ? "rgba(255, 255, 255, 0.85)" : "rgba(0, 0, 0, 0.85)",
+});
+
+/** macOS system red, as used for Dock badges. */
+const BADGE_RED = "#FF3B30";
 
 const ACCESSIBILITY_SETTINGS = "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
 
 // Dock tiles that are never applications.
 const NON_APP_TILES = new Set(["Downloads", "Trash", "Applications", "Documents"]);
 
-/** Asset for the menu bar icon: icons/{bell,app}[-badge][-fill].svg, tinted at render time. */
-function iconAsset({ symbol = "bell", symbolStyle = "filled" }: Preferences, badged: boolean): string {
-  return `icons/${symbol}${badged ? "-badge" : ""}${symbolStyle === "filled" ? "-fill" : ""}.svg`;
+/**
+ * Menu bar glyph for the chosen symbol and style. Circle uses Raycast's built-in icons; Bell and App use
+ * the SF Symbol SVGs in assets/icons ({bell,app}[-badge][-fill].svg). All are tinted at render time.
+ */
+function iconSource({ symbol = "circle", symbolStyle = "filled" }: Preferences, badged: boolean): Image.Source {
+  const filled = symbolStyle === "filled";
+  if (symbol === "circle") return filled ? Icon.CircleFilled : Icon.Circle;
+  return `icons/${symbol}${badged ? "-badge" : ""}${filled ? "-fill" : ""}.svg`;
 }
 
 function sameName(a: string, b: string): boolean {
@@ -66,19 +79,17 @@ export default function Command() {
   }
 
   const accessibilityDenied = error instanceof AccessibilityError;
-  // Tinting with PrimaryText makes the glyph follow the menu bar's foreground colour (including
-  // wallpaper-based tinting) like a native template image.
+  // Idle: tint with PrimaryText so the glyph follows the menu bar's foreground colour (including
+  // wallpaper-based tinting) like a native template image. Badged: system red, so the attention
+  // state is unmistakable against the other monochrome menu bar extras.
   const icon = error
     ? { source: Icon.ExclamationMark, tintColor: Color.Orange }
-    : { source: iconAsset(preferences, hasBadges), tintColor: Color.PrimaryText };
-
-  const summary = badged.map((app) => `${app.tile.name} ${app.tile.badge}`).join(" · ");
+    : { source: iconSource(preferences, hasBadges), tintColor: hasBadges ? BADGE_RED : Color.PrimaryText };
 
   return (
     <MenuBarExtra
       icon={icon}
       title={preferences.showCount && hasBadges ? String(total) : undefined}
-      tooltip={error ? "Unable to read Dock badges" : summary || "No notifications"}
       isLoading={isLoading}
     >
       {accessibilityDenied ? (
@@ -91,7 +102,12 @@ export default function Command() {
         </MenuBarExtra.Section>
       ) : error ? (
         <MenuBarExtra.Section title="Error">
-          <MenuBarExtra.Item title={error.message} icon={menuIcon(Icon.ExclamationMark, darkMode)} />
+          <MenuBarExtra.Item
+            title={error.message}
+            icon={menuIcon(Icon.ExclamationMark, darkMode)}
+            tooltip="Click to retry"
+            onAction={revalidate}
+          />
         </MenuBarExtra.Section>
       ) : (
         <MenuBarExtra.Section title={hasBadges ? `${total} notification${total === 1 ? "" : "s"}` : "No notifications"}>
